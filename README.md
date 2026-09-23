@@ -1,1 +1,0 @@
-# projektmanagement-dashboard
