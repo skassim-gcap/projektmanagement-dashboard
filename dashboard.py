@@ -57,13 +57,63 @@ try:
     if projekte.empty:
         st.warning("In der Datenbank wurden noch keine Projekte gefunden.")
     else:
-        projekt = st.selectbox(
-            "Projekt",
-            projekte["projektname"].tolist()
+       projekt = st.selectbox(
+    "Projekt",
+    projekte["projektname"].tolist()
+)
+
+# Passende Projekt-ID ermitteln
+projekt_id = projekte.loc[
+    projekte["projektname"] == projekt,
+    "projekt_id"
+].iloc[0]
+
+
+# --------------------------------------------------
+# ZEITRAUM AUSWÄHLEN
+# --------------------------------------------------
+
+def load_date_range(projekt_id):
+    conn = get_connection()
+
+    query = """
+        SELECT
+            MIN(berichtsmonat) AS min_datum,
+            MAX(berichtsmonat) AS max_datum
+        FROM monatsberichte
+        WHERE projekt_id = %s;
+    """
+
+    df = pd.read_sql(query, conn, params=(projekt_id,))
+    conn.close()
+
+    return df
+
+
+zeitraum = load_date_range(projekt_id)
+
+min_datum = zeitraum["min_datum"].iloc[0]
+max_datum = zeitraum["max_datum"].iloc[0]
+
+if min_datum is not None and max_datum is not None:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        von_datum = st.date_input(
+            "Von",
+            value=min_datum,
+            min_value=min_datum,
+            max_value=max_datum
         )
 
-        st.success(f"Ausgewähltes Projekt: {projekt}")
+    with col2:
+        bis_datum = st.date_input(
+            "Bis",
+            value=max_datum,
+            min_value=min_datum,
+            max_value=max_datum
+        )
 
-except Exception as e:
-    st.error("Die Daten konnten nicht aus der Datenbank geladen werden.")
-    st.exception(e)
+else:
+    st.warning("Für dieses Projekt sind noch keine Monatsdaten vorhanden.")
